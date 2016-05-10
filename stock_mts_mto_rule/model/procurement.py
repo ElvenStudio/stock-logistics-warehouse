@@ -38,7 +38,13 @@ class ProcurementOrder(models.Model):
     def get_mto_qty_to_order(self):
         self.ensure_one()
         uom_obj = self.env['product.uom']
-        stock_location = self.warehouse_id.lot_stock_id.id
+
+        # stock_location = self.warehouse_id.lot_stock_id.id
+        if self.rule_id and self.rule_id.mts_rule_id and self.rule_id.mts_rule_id.location_src_id:
+            stock_location = self.rule_id.mts_rule_id.location_src_id.id
+        else:
+            stock_location = self.warehouse_id.lot_stock_id.id
+            
         proc_warehouse = self.with_context(location=stock_location)
         virtual_available = proc_warehouse.product_id.virtual_available
         qty_available = uom_obj._compute_qty(self.product_id.uom_id.id,
