@@ -20,6 +20,8 @@
 #
 ###############################################################################
 from openerp import models, api, fields
+import logging
+_log = logging.getLogger(__name__)
 
 
 class ProcurementOrder(models.Model):
@@ -44,17 +46,21 @@ class ProcurementOrder(models.Model):
             stock_location = self.rule_id.mts_rule_id.location_src_id.id
         else:
             stock_location = self.warehouse_id.lot_stock_id.id
-            
-        proc_warehouse = self.with_context(location=stock_location)
-        virtual_available = proc_warehouse.product_id.virtual_available
-        qty_available = uom_obj._compute_qty(self.product_id.uom_id.id,
-                                             virtual_available,
-                                             self.product_uom.id)
+
+        procurement_warehouse = self.with_context(location=stock_location)
+
+        # I can MTO only the immediately available qty
+        # so i remove the outgoing qty from the available qty
+        qty_on_hand = procurement_warehouse.product_id.qty_available - procurement_warehouse.product_id.outgoing_qty
+
+        qty_available = uom_obj._compute_qty(self.product_id.uom_id.id, qty_on_hand, self.product_uom.id)
+
         if qty_available > 0:
             if qty_available >= self.product_qty:
                 return 0.0
             else:
                 return self.product_qty - qty_available
+
         return self.product_qty
 
     @api.model
@@ -102,6 +108,8 @@ class ProcurementOrder(models.Model):
                 return super(ProcurementOrder, self)._run(procurement)
             uom_obj = self.env['product.uom']
             needed_qty = procurement.get_mto_qty_to_order()
+            _log.warning("Make to order " + str(needed_qty))
+
             rule = procurement.rule_id
             if needed_qty == 0.0:
                 mts_vals = self._get_mts_mto_procurement(
