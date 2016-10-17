@@ -43,7 +43,10 @@ class ProcurementOrder(models.Model):
 
         # stock_location = self.warehouse_id.lot_stock_id.id
         if self.rule_id and self.rule_id.mts_rule_id and self.rule_id.mts_rule_id.location_src_id:
-            stock_location = self.rule_id.mts_rule_id.location_src_id.id
+            src_loc = self.rule_id.mts_rule_id.location_src_id
+            warehouse_id = src_loc.get_warehouse(src_loc)
+            stock_location = self.env['stock.warehouse'].browse(warehouse_id).lot_stock_id.id
+            # stock_location = self.rule_id.mts_rule_id.location_src_id.id
         else:
             stock_location = self.warehouse_id.lot_stock_id.id
 
